@@ -28,6 +28,7 @@ def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     :param representation: GRAY_SCALE or RGB
     :return: The image object
     """
+
     if representation == 1: return cv.imread(filename, cv.IMREAD_GRAYSCALE)
     return cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB)
 
@@ -93,7 +94,7 @@ def equalize(img: np.ndarray) -> None:
 
 ''' The folowing 2 methods are for processing the Y - channle of a YIQ formatted image '''
 
-def descret_luminance(luminance: np.ndarray) -> np.ndarray:
+def discrete_luminance(luminance: np.ndarray) -> np.ndarray:
     return cv.normalize(luminance, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(int)
 
 def continuous_luminance(luluminance: np.ndarray) -> np.ndarray:
@@ -110,8 +111,7 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     color = len(imgOrig.shape) == 3
 
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-
-    histEQ = descret_luminance(imgEq[:,:,0]).ravel() if color else imgEq.ravel()
+    histEQ = discrete_luminance(imgEq[:,:,0]).ravel() if color else imgEq.ravel()
 
     equalize(histEQ)
 
@@ -131,7 +131,7 @@ def expectation(pdf, start, end):
     return int(np.arange(start, end) @ pdf[start:end] / max(sum(pdf[start:end]), 1))
 
 def MSE(pdf, bounds, centroids):
-    return sum((val - centroids[ind]) ** 2  for ind in range(len(bounds) - 1) for val in pdf[bounds[ind] : bounds[ind - 1]]) / sum(pdf)
+    return np.sqrt(sum((val - centroids[ind]) ** 2  for ind in range(len(bounds) - 1) for val in pdf[bounds[ind] : bounds[ind - 1]])) / sum(pdf)
 
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.ndarray], List[float]]:
@@ -148,9 +148,9 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
 
     if color:
         imOrig = transformRGB2YIQ(imOrig)
-        imOrig[:,:,0] = descret_luminance(imOrig[:,:,0])
+        imOrig[:,:,0] = discrete_luminance(imOrig[:,:,0])
 
-    pdf = hist(imOrig[:,:,0].ravel() if color else imOrig.ravel())
+    pdf = hist(imOrig[:,:,0].ravel().astype(int) if color else imOrig.ravel())
 
     bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))
     centroids = np.ones(nQuant)
@@ -165,7 +165,7 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
     
         quantizer = lambda col : centroids[int(col * nQuant / 256)]
 
-        for row in (img[:,:,0] if color else img):
+        for row in img[:,:,0] if color else img:
             for ind in range(len(row)): row[ind] = quantizer(row[ind])
 
         if color:

@@ -63,8 +63,8 @@ def main():
     
 
     # Image histEq
-    histEqDemo(img_path, LOAD_GRAY_SCALE)
-    histEqDemo(img_path, LOAD_RGB)
+    #histEqDemo(img_path, LOAD_GRAY_SCALE)
+    #histEqDemo(img_path, LOAD_RGB)
 
     # Image Quantization
     quantDemo(img_path, LOAD_GRAY_SCALE)
