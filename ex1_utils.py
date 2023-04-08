@@ -62,7 +62,7 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
     :return: A RGB in image color space
     """
 
-    return np.dot(imgYIQ, np.linalg.inv(YIQKERNEL))
+    return np.dot(imgYIQ, np.linalg.inv(YIQKERNEL).transpose())
 
 
 
@@ -91,6 +91,15 @@ def equalize(img: np.ndarray) -> None:
     for ind in range(len(img)): img[ind] = lin_cdf[img[ind]]
 
 
+''' The folowing 2 methods are for processing the Y - channle of a YIQ formatted image '''
+
+def descret_luminance(luminance: np.ndarray) -> np.ndarray:
+    return cv.normalize(luminance, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(int)
+
+def continuous_luminance(luluminance: np.ndarray) -> np.ndarray:
+    return cv.normalize(luluminance, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+
+
 def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     """
     Equalizes the histogram of an image
@@ -99,20 +108,16 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     """ 
     
     color = len(imgOrig.shape) == 3
-    imgEq = imgOrig.copy()
 
-    if color:
-        
-        imgEq = transformRGB2YIQ(imgOrig)
-        histEQ = cv.normalize(imgEq[:,:,0], None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(int).ravel()
+    imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
 
-    else: histEQ = imgEq.ravel()
+    histEQ = descret_luminance(imgEq[:,:,0]).ravel() if color else imgEq.ravel()
 
     equalize(histEQ)
 
     if color:
 
-        imgEq[:,:,0] = cv.normalize(histEQ.reshape(imgEq[:,:,0].shape), None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+        imgEq[:,:,0] = continuous_luminance(histEQ).reshape(imgEq[:,:,0].shape)
         imgEq = transformYIQ2RGB(imgEq)
 
     else: imgEq = histEQ.reshape(imgEq.shape)
@@ -121,6 +126,12 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     return imgEq, hist(imgOrig[:,:,0].ravel() if color else imgOrig.ravel()), hist(histEQ)
 
 
+
+def expectation(pdf, start, end):
+    return int(np.arange(start, end) @ pdf[start:end] / max(sum(pdf[start:end]), 1))
+
+def MSE(pdf, bounds, centroids):
+    return sum((val - centroids[ind]) ** 2  for ind in range(len(bounds) - 1) for val in pdf[bounds[ind] : bounds[ind - 1]]) / sum(pdf)
 
 
 def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.ndarray], List[float]]:
@@ -131,4 +142,38 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
         :param nIter: Number of optimization loops
         :return: (List[qImage_i],List[error_i])
     """
-    pass
+    
+    color = len(imOrig.shape) == 3
+    img_history, error_history = [], []
+
+    if color:
+        imOrig = transformRGB2YIQ(imOrig)
+        imOrig[:,:,0] = descret_luminance(imOrig[:,:,0])
+
+    pdf = hist(imOrig[:,:,0].ravel() if color else imOrig.ravel())
+
+    bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))
+    centroids = np.ones(nQuant)
+
+    for _ in range(nIter):
+
+        img = imOrig.copy()
+
+        for ind in range(nQuant): centroids[ind] = expectation(pdf, bounds[ind], bounds[ind + 1])
+
+        for ind in range(1, nQuant): bounds[ind] = int((centroids[ind - 1] + centroids[ind]) / 2)
+    
+        quantizer = lambda col : centroids[int(col * nQuant / 256)]
+
+        for row in (img[:,:,0] if color else img):
+            for ind in range(len(row)): row[ind] = quantizer(row[ind])
+
+        if color:
+            img[:,:,0] = continuous_luminance(img[:,:,0])
+            img = transformYIQ2RGB(img)
+
+        img_history.append(img)
+        error_history.append(MSE(pdf, bounds, centroids))
+
+
+    return img_history, error_history
