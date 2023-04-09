@@ -151,7 +151,6 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
         imOrig[:,:,0] = discrete_luminance(imOrig[:,:,0])
 
     pdf = hist(imOrig[:,:,0].ravel().astype(int) if color else imOrig.ravel())
-
     bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))
     centroids = np.ones(nQuant)
 
