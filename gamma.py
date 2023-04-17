@@ -12,7 +12,7 @@ def gammaDisplay(img_path: str, rep: int):
     """
 
     global img
-    img = imReadAndConvert(img_path, rep)
+    img = discrete_luminance(imReadAndConvert(img_path, rep))
 
     def gamma_correct(val): cv.imshow(title_window, ((img / 255) ** (val / 50) * 255).astype(np.uint8))
 

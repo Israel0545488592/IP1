@@ -29,8 +29,8 @@ def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     :return: The image object
     """
 
-    if representation == 1: return cv.imread(filename, cv.IMREAD_GRAYSCALE)
-    return cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB)
+    img = cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB if representation == LOAD_RGB else cv.COLOR_BGR2GRAY)
+    return cv.normalize(img, None, alpha = 0, beta = 1, norm_type =  cv.NORM_MINMAX, dtype = cv.CV_32F)
 
 
 def imDisplay(filename: str, representation: int):
@@ -41,9 +41,7 @@ def imDisplay(filename: str, representation: int):
     :return: None
     """
 
-    plt.imshow(imReadAndConvert(filename, representation), cmap = 'gray' if representation == 1 else None)
-    plt.grid(False)
-    plt.axis(False)
+    plt.imshow(imReadAndConvert(filename, representation), cmap = 'gray' if representation == LOAD_GRAY_SCALE else None)
 
 
 def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
@@ -111,20 +109,18 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     color = len(imgOrig.shape) == 3
 
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-    histEQ = discrete_luminance(imgEq[:,:,0]).ravel() if color else imgEq.ravel()
+    histEQ = discrete_luminance(imgEq[:, :, 0] if color else imgEq).ravel()
 
     equalize(histEQ)
 
     if color:
 
-        imgEq[:,:,0] = continuous_luminance(histEQ).reshape(imgEq[:,:,0].shape)
+        imgEq[:, :, 0] = continuous_luminance(histEQ).reshape(imgEq[:, :, 0].shape)
         imgEq = transformYIQ2RGB(imgEq)
 
     else: imgEq = histEQ.reshape(imgEq.shape)
 
-
-    return imgEq, hist(imgOrig[:,:,0].ravel() if color else imgOrig.ravel()), hist(histEQ)
-
+    return imgEq, hist(discrete_luminance(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
 
 
 def expectation(pdf, start, end):
@@ -146,17 +142,15 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
     color = len(imOrig.shape) == 3
     img_history, error_history = [], []
 
-    if color:
-        imOrig = transformRGB2YIQ(imOrig)
-        imOrig[:,:,0] = discrete_luminance(imOrig[:,:,0])
+    base_img = discrete_luminance(transformRGB2YIQ(imOrig)[:, :, 0] if color else imOrig)
 
-    pdf = hist(imOrig[:,:,0].ravel().astype(int) if color else imOrig.ravel())
+    pdf = hist(base_img.ravel())
     bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))
     centroids = np.ones(nQuant)
 
     for _ in range(nIter):
 
-        img = imOrig.copy()
+        img = base_img.copy()
 
         for ind in range(nQuant): centroids[ind] = expectation(pdf, bounds[ind], bounds[ind + 1])
 
@@ -164,12 +158,10 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
     
         quantizer = lambda col : centroids[int(col * nQuant / 256)]
 
-        for row in img[:,:,0] if color else img:
+        for row in img:
             for ind in range(len(row)): row[ind] = quantizer(row[ind])
 
-        if color:
-            img[:,:,0] = continuous_luminance(img[:,:,0])
-            img = transformYIQ2RGB(img)
+        if color:   img = transformYIQ2RGB(np.dstack((continuous_luminance(img), transformRGB2YIQ(imOrig)[:, :, 1:])))
 
         img_history.append(img)
         error_history.append(MSE(pdf, bounds, centroids))
