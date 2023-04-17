@@ -12,7 +12,7 @@ def gammaDisplay(img_path: str, rep: int):
     """
 
     global img
-    img = discrete_luminance(imReadAndConvert(img_path, rep))
+    img = discrete_normelize(imReadAndConvert(img_path, rep))
 
     def gamma_correct(val): cv.imshow(title_window, ((img / 255) ** (val / 50) * 255).astype(np.uint8))
 
@@ -21,9 +21,4 @@ def gammaDisplay(img_path: str, rep: int):
     cv.waitKey()
 
 
-def main():
-    gammaDisplay('bac_con.png', LOAD_RGB)
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  gammaDisplay('bac_con.png', LOAD_RGB)

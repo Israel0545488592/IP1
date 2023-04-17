@@ -73,5 +73,4 @@ def main():
     gammaDisplay(img_path, LOAD_GRAY_SCALE)
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  main()

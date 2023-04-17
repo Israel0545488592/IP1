@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from typing import List, Tuple, Callable
+
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -21,6 +22,13 @@ def myID() -> int:
     return 212403679
 
 
+def discrete_normelize(luminance: np.ndarray) -> np.ndarray:
+    return cv.normalize(luminance, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(np.uint8)
+
+def continuous_normalize(luluminance: np.ndarray) -> np.ndarray:
+    return cv.normalize(luluminance, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+
+
 def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     """
     Reads an image, and returns the image converted as requested
@@ -29,8 +37,7 @@ def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     :return: The image object
     """
 
-    img = cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB if representation == LOAD_RGB else cv.COLOR_BGR2GRAY)
-    return cv.normalize(img, None, alpha = 0, beta = 1, norm_type =  cv.NORM_MINMAX, dtype = cv.CV_32F)
+    return continuous_normalize(cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB if representation == LOAD_RGB else cv.COLOR_BGR2GRAY))
 
 
 def imDisplay(filename: str, representation: int):
@@ -64,7 +71,6 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
     return np.dot(imgYIQ, np.linalg.inv(YIQKERNEL).transpose())
 
 
-
 def hist(arr: np.ndarray) -> np.ndarray:
     """ PDF """
 
@@ -82,21 +88,12 @@ def cum_hist(arr: np.ndarray) -> np.ndarray:
     return cum_sum
 
 
-def equalize(img: np.ndarray) -> None:
+def hist_equalizer(img: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
     """ histogram equalization """
 
-    lin_cdf = ((cum_hist(hist(img)) / img.size) * 255).astype(int)
+    lin_cdf = ((cum_hist(hist(img)) / img.size) * 255).astype(np.uint8)
 
-    for ind in range(len(img)): img[ind] = lin_cdf[img[ind]]
-
-
-''' The folowing 2 methods are for processing the Y - channle of a YIQ formatted image '''
-
-def discrete_luminance(luminance: np.ndarray) -> np.ndarray:
-    return cv.normalize(luminance, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(int)
-
-def continuous_luminance(luluminance: np.ndarray) -> np.ndarray:
-    return cv.normalize(luluminance, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+    return np.vectorize(lambda col : lin_cdf[col])
 
 
 def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
@@ -109,18 +106,13 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     color = len(imgOrig.shape) == 3
 
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-    histEQ = discrete_luminance(imgEq[:, :, 0] if color else imgEq).ravel()
+    histEQ = discrete_normelize(imgEq[:, :, 0] if color else imgEq).ravel()
+    histEQ = hist_equalizer(histEQ) (histEQ)
 
-    equalize(histEQ)
+    if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq[:, :, 0].shape), imgEq[:, :, 1:])))
+    else: imgEq =  histEQ.reshape(imgEq.shape)
 
-    if color:
-
-        imgEq[:, :, 0] = continuous_luminance(histEQ).reshape(imgEq[:, :, 0].shape)
-        imgEq = transformYIQ2RGB(imgEq)
-
-    else: imgEq = histEQ.reshape(imgEq.shape)
-
-    return imgEq, hist(discrete_luminance(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
+    return imgEq, hist(discrete_normelize(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
 
 
 def expectation(pdf, start, end):
@@ -142,7 +134,7 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
     color = len(imOrig.shape) == 3
     img_history, error_history = [], []
 
-    base_img = discrete_luminance(transformRGB2YIQ(imOrig)[:, :, 0] if color else imOrig)
+    base_img = discrete_normelize(transformRGB2YIQ(imOrig)[:, :, 0] if color else imOrig)
 
     pdf = hist(base_img.ravel())
     bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))
@@ -156,12 +148,9 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
 
         for ind in range(1, nQuant): bounds[ind] = int((centroids[ind - 1] + centroids[ind]) / 2)
     
-        quantizer = lambda col : centroids[int(col * nQuant / 256)]
+        img = np.vectorize(lambda col : centroids[int(col * nQuant / 256)]) (img)
 
-        for row in img:
-            for ind in range(len(row)): row[ind] = quantizer(row[ind])
-
-        if color:   img = transformYIQ2RGB(np.dstack((continuous_luminance(img), transformRGB2YIQ(imOrig)[:, :, 1:])))
+        if color:   img = transformYIQ2RGB(np.dstack((continuous_normalize(img), transformRGB2YIQ(imOrig)[:, :, 1:])))
 
         img_history.append(img)
         error_history.append(MSE(pdf, bounds, centroids))
