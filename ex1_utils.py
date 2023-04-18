@@ -48,7 +48,9 @@ def imDisplay(filename: str, representation: int):
     :return: None
     """
 
+    plt.title('RGB' if representation == LOAD_RGB else 'GRAY_SCALE')
     plt.imshow(imReadAndConvert(filename, representation), cmap = 'gray' if representation == LOAD_GRAY_SCALE else None)
+    plt.show()
 
 
 def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
@@ -88,12 +90,12 @@ def cum_hist(arr: np.ndarray) -> np.ndarray:
     return cum_sum
 
 
-def hist_equalizer(img: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
+def hist_equalized(img: np.ndarray) -> np.ndarray:
     """ histogram equalization """
 
-    lin_cdf = ((cum_hist(hist(img)) / img.size) * 255).astype(np.uint8)
+    lin_cdf = discrete_normelize(cum_hist(hist(img)) / img.size)
 
-    return np.vectorize(lambda col : lin_cdf[col])
+    return np.vectorize(lambda col : lin_cdf[col]) (img)
 
 
 def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
@@ -106,8 +108,7 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     color = len(imgOrig.shape) == 3
 
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-    histEQ = discrete_normelize(imgEq[:, :, 0] if color else imgEq).ravel()
-    histEQ = hist_equalizer(histEQ) (histEQ)
+    histEQ = hist_equalized(discrete_normelize(imgEq[:, :, 0] if color else imgEq).ravel())
 
     if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq[:, :, 0].shape), imgEq[:, :, 1:])))
     else: imgEq =  histEQ.reshape(imgEq.shape)
