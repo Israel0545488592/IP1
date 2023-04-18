@@ -1,6 +1,7 @@
 from ex1_utils import *
 
 title_window = 'gamma correction'
+RESOLUTION = 40
 
 
 def gammaDisplay(img_path: str, rep: int):
@@ -12,12 +13,22 @@ def gammaDisplay(img_path: str, rep: int):
     """
 
     global img
-    img = discrete_normelize(imReadAndConvert(img_path, rep))
+    global last_val
+    img = imReadAndConvert(img_path, rep)
+    last_val = RESOLUTION
 
-    def gamma_correct(val): cv.imshow(title_window, ((img / 255) ** (val / 50) * 255).astype(np.uint8))
+    def gamma_correct(val):
+
+        global img
+        global last_val
+        val += 1
+
+        img **= (val / last_val)
+        cv.imshow(title_window, discrete_normelize(img))
+        last_val = val
 
     cv.namedWindow(title_window)
-    cv.createTrackbar('gamma ', title_window, 50, 120, gamma_correct)
+    cv.createTrackbar('gamma ', title_window, RESOLUTION, RESOLUTION * 3, gamma_correct)
     cv.waitKey()
 
 
