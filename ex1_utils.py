@@ -110,7 +110,7 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
     histEQ = hist_equalized(discrete_normelize(imgEq[:, :, 0] if color else imgEq).ravel())
 
-    if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq[:, :, 0].shape), imgEq[:, :, 1:])))
+    if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq.shape[:-1]), imgEq[:, :, 1:])))
     else: imgEq =  histEQ.reshape(imgEq.shape)
 
     return imgEq, hist(discrete_normelize(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)

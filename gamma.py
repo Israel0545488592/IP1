@@ -23,7 +23,7 @@ def gammaDisplay(img_path: str, rep: int):
         global last_val
         val += 1
 
-        img **= (val / last_val)
+        img **= val / last_val
         cv.imshow(title_window, discrete_normelize(img))
         last_val = val
 
