@@ -1,4 +1,4 @@
-from typing import List, Tuple, Callable
+from typing import List, Tuple
 
 import numpy as np
 import cv2 as cv
@@ -22,11 +22,11 @@ def myID() -> int:
     return 212403679
 
 
-def discrete_normelize(luminance: np.ndarray) -> np.ndarray:
-    return cv.normalize(luminance, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(np.uint8)
+def discrete_normalize(arr: np.ndarray) -> np.ndarray:
+    return cv.normalize(arr, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(np.uint8)
 
-def continuous_normalize(luluminance: np.ndarray) -> np.ndarray:
-    return cv.normalize(luluminance, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
+def continuous_normalize(arr: np.ndarray) -> np.ndarray:
+    return cv.normalize(arr, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
 
 
 def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
@@ -93,7 +93,7 @@ def cum_hist(arr: np.ndarray) -> np.ndarray:
 def hist_equalized(img: np.ndarray) -> np.ndarray:
     """ histogram equalization """
 
-    lin_cdf = discrete_normelize(cum_hist(hist(img)) / img.size)
+    lin_cdf = discrete_normalize(cum_hist(hist(img)) / img.size)
 
     return np.vectorize(lambda col : lin_cdf[col]) (img)
 
@@ -108,12 +108,12 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     color = len(imgOrig.shape) == 3
 
     imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-    histEQ = hist_equalized(discrete_normelize(imgEq[:, :, 0] if color else imgEq).ravel())
+    histEQ = hist_equalized(discrete_normalize(imgEq[:, :, 0] if color else imgEq).ravel())
 
     if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq.shape[:-1]), imgEq[:, :, 1:])))
     else: imgEq =  histEQ.reshape(imgEq.shape)
 
-    return imgEq, hist(discrete_normelize(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
+    return imgEq, hist(discrete_normalize(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
 
 
 def expectation(pdf, start, end):
@@ -135,7 +135,7 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
     color = len(imOrig.shape) == 3
     img_history, error_history = [], []
 
-    base_img = discrete_normelize(transformRGB2YIQ(imOrig)[:, :, 0] if color else imOrig)
+    base_img = discrete_normalize(transformRGB2YIQ(imOrig)[:, :, 0] if color else imOrig)
 
     pdf = hist(base_img.ravel())
     bounds = list(np.linspace(0, 255, nQuant + 1).astype(int))

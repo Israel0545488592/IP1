@@ -24,7 +24,7 @@ def gammaDisplay(img_path: str, rep: int):
         val += 1
 
         img **= val / last_val
-        cv.imshow(title_window, discrete_normelize(img))
+        cv.imshow(title_window, discrete_normalize(img))
         last_val = val
 
     cv.namedWindow(title_window)
