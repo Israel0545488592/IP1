@@ -76,7 +76,7 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
 def hist(arr: np.ndarray) -> np.ndarray:
     """ PDF """
 
-    hist = np.zeros(256).astype(int)
+    hist = np.zeros(256, dtype = np.uint32)
     for pix in arr: hist[pix] += 1
     return hist
 
@@ -93,7 +93,7 @@ def cum_hist(arr: np.ndarray) -> np.ndarray:
 def hist_equalized(img: np.ndarray) -> np.ndarray:
     """ histogram equalization """
 
-    lin_cdf = discrete_normalize(cum_hist(hist(img)) / img.size)
+    lin_cdf = discrete_normalize(cum_hist(hist(img.ravel())) / img.size)
 
     return np.vectorize(lambda col : lin_cdf[col]) (img)
 
@@ -107,13 +107,13 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     
     color = len(imgOrig.shape) == 3
 
-    imgEq = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
-    histEQ = hist_equalized(discrete_normalize(imgEq[:, :, 0] if color else imgEq).ravel())
+    img = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
+    imgEq = hist_equalized(discrete_normalize(img[:, :, 0] if color else img))
+    histEQ = hist(imgEq.ravel())
 
-    if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(histEQ).reshape(imgEq.shape[:-1]), imgEq[:, :, 1:])))
-    else: imgEq =  histEQ.reshape(imgEq.shape)
+    if color: imgEq = transformYIQ2RGB(np.dstack((continuous_normalize(imgEq), img[:, :, 1:])))
 
-    return imgEq, hist(discrete_normalize(imgOrig[:, :, 0] if color else imgOrig).ravel()), hist(histEQ)
+    return imgEq, hist(discrete_normalize(img[:, :, 0] if color else img).ravel()), histEQ
 
 
 def expectation(pdf, start, end):
