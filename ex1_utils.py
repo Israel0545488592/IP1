@@ -23,7 +23,7 @@ def myID() -> int:
 
 
 def discrete_normalize(arr: np.ndarray) -> np.ndarray:
-    return cv.normalize(arr, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F).astype(np.uint8)
+    return cv.normalize(arr, None, alpha = 0, beta = 255, norm_type = cv.NORM_MINMAX, dtype = cv.CV_8U)
 
 def continuous_normalize(arr: np.ndarray) -> np.ndarray:
     return cv.normalize(arr, None, alpha = 0, beta = 1, norm_type = cv.NORM_MINMAX, dtype = cv.CV_32F)
