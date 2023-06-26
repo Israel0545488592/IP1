@@ -49,6 +49,10 @@ def main():
     print("ID:", myID())
     img_path = 'data/water_bear.png'
 
+    # Image Quantization
+    quantDemo(img_path, LOAD_GRAY_SCALE)
+    quantDemo(img_path, LOAD_RGB)
+
     # Basic read and display
     imDisplay(img_path, LOAD_GRAY_SCALE)
     imDisplay(img_path, LOAD_RGB)
