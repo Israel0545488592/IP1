@@ -13,7 +13,6 @@ YIQKERNEL = np.array([[0.299,  0.587,  0.114 ],
 
 
 
-
 def myID() -> int:
     """
     Return my ID (not the friend's ID I copied from)
@@ -36,7 +35,6 @@ def imReadAndConvert(filename: str, representation: int) -> np.ndarray:
     :param representation: GRAY_SCALE or RGB
     :return: The image object
     """
-
     return continuous_normalize(cv.cvtColor(cv.imread(filename), cv.COLOR_BGR2RGB if representation == LOAD_RGB else cv.COLOR_BGR2GRAY))
 
 
@@ -47,7 +45,6 @@ def imDisplay(filename: str, representation: int):
     :param representation: GRAY_SCALE or RGB
     :return: None
     """
-
     plt.title('RGB' if representation == LOAD_RGB else 'GRAY_SCALE')
     plt.imshow(imReadAndConvert(filename, representation), cmap = 'gray' if representation == LOAD_GRAY_SCALE else None)
     plt.show()
@@ -59,7 +56,6 @@ def transformRGB2YIQ(imgRGB: np.ndarray) -> np.ndarray:
     :param imgRGB: An Image in RGB
     :return: A YIQ in image color space
     """
-
     return np.dot(imgRGB, YIQKERNEL.transpose())
 
 
@@ -69,31 +65,19 @@ def transformYIQ2RGB(imgYIQ: np.ndarray) -> np.ndarray:
     :param imgYIQ: An Image in YIQ
     :return: A RGB in image color space
     """
-
     return np.dot(imgYIQ, np.linalg.inv(YIQKERNEL).transpose())
 
 
 def hist(arr: np.ndarray) -> np.ndarray:
     """ PDF """
 
-    hist = np.zeros(256, dtype = np.uint32)
-    for pix in arr: hist[pix] += 1
-    return hist
-
-
-def cum_hist(arr: np.ndarray) -> np.ndarray:
-    """ CDF """
-
-    cum_sum = np.zeros_like(arr)
-    cum_sum[0] = arr[0]
-    for i in range(1, len(arr)): cum_sum[i] = cum_sum[i-1] + arr[i] 
-    return cum_sum
+    return np.histogram(arr, bins = 256)[0]
 
 
 def hist_equalized(img: np.ndarray) -> np.ndarray:
     """ histogram equalization """
 
-    lin_cdf = discrete_normalize(cum_hist(hist(img.ravel())) / img.size)
+    lin_cdf = discrete_normalize(np.cumsum(hist(img.ravel())) / img.size)
 
     return np.vectorize(lambda col : lin_cdf[col]) (img)
 
@@ -104,7 +88,6 @@ def hsitogramEqualize(imgOrig: np.ndarray) -> Tuple[np.ndarray]:
     :param imgOrig: Original image
     :return: (imgEq,histOrg,histEQ)
     """ 
-    
     color = len(imgOrig.shape) == 3
 
     img = transformRGB2YIQ(imgOrig.copy()) if color else imgOrig.copy()
@@ -131,7 +114,6 @@ def quantizeImage(imOrig: np.ndarray, nQuant: int, nIter: int) -> Tuple[List[np.
         :param nIter: Number of optimization loops
         :return: (List[qImage_i],List[error_i])
     """
-    
     color = len(imOrig.shape) == 3
     img_history, error_history = [], []
 

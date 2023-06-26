@@ -47,11 +47,7 @@ def quantDemo(img_path: str, rep: int):
 
 def main():
     print("ID:", myID())
-    img_path = 'data/water_bear.png'
-
-    # Image Quantization
-    quantDemo(img_path, LOAD_GRAY_SCALE)
-    quantDemo(img_path, LOAD_RGB)
+    img_path = 'data/beach.jpg'
 
     # Basic read and display
     imDisplay(img_path, LOAD_GRAY_SCALE)
